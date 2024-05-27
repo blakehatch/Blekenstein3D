@@ -29,10 +29,49 @@ void createAndSendUpdateMessage(int sockfd, float x, float y, float angle, bool 
     msg.angle = angle;
     msg.isFiring = isFiring;
     sendUpdateMessage(sockfd, &msg);
+}
+
+void readUpdateMessages(int sockfd) {
     char buff[MAX];
     bzero(buff, sizeof(buff));
-    read(sockfd, buff, sizeof(buff));
+    int totalBytesRead = 0;
+    int bytesRead = 0;
+
+    // Read until the buffer is filled
+    while (totalBytesRead < sizeof(buff) - 1) {
+        bytesRead = read(sockfd, buff + totalBytesRead, sizeof(buff) - 1 - totalBytesRead);
+        if (bytesRead <= 0) {
+            break; // Exit if no more data is read or an error occurs
+        }
+        totalBytesRead += bytesRead;
+    }
+    buff[totalBytesRead] = '\0'; // Null-terminate the string
+
     printf("From Server : %s", buff);
+
+    // Extract player count from the received message
+    int playerCount = 0;
+    sscanf(buff, "Sending list of %d players back.", &playerCount);
+
+    // Dynamically allocate the updateMessages array based on player count
+    UpdateMessage *updateMessages = (UpdateMessage *)malloc(playerCount * sizeof(UpdateMessage));
+    if (updateMessages == NULL) {
+        printf("Memory allocation failed for updateMessages.\n");
+        return;
+    }
+
+    bytesRead = read(sockfd, updateMessages, playerCount * sizeof(UpdateMessage));
+    if (bytesRead > 0) {
+        for (int i = 0; i < bytesRead / sizeof(UpdateMessage); ++i) {
+            printf("UpdateMessageFS %d: x=%f, y=%f, angle=%f, isFiring=%d\n", 
+                   i, updateMessages[i].x, updateMessages[i].y, updateMessages[i].angle, updateMessages[i].isFiring);
+        }
+    } else {
+        printf("Failed to read update messages from server.\n");
+    }
+
+    // Free the allocated memory
+    free(updateMessages);
 }
 
 int create_and_connect_socket() {

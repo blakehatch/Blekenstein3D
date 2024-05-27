@@ -1,60 +1,58 @@
-#include <array>
-#include <optional>
+#include "game-state.h"
+#include <functional> // For std::reference_wrapper
 
-#include "player.h"
+GameState::GameState() {
+    players.fill(Player());
+    playerCount = 0;
+}
 
-class GameState {
-public:
-    static const int maxPlayers = 10;
-
-    GameState() {
-        players.fill(Player());
-        playerCount = 0;
-    }
-
-    // Add a player to the game state
-    bool addPlayer(const Player& player) {
-        if (playerCount < maxPlayers) {
+bool GameState::addPlayer(const Player& player) {
+    if (playerCount < maxPlayers) {
+        if (playerMap.find(player.getClientId()) == playerMap.end()) {
             players[playerCount++] = player;
             playerMap[player.getClientId()] = player;
-            return true;
         }
-        return false;
+        return true;
     }
+    return false;
+}
 
-    // Remove a player from the game state by index
-    bool removePlayer(int index) {
-        if (index < playerCount) {
-            for (int i = index; i < playerCount - 1; ++i) {
-                playerMap.erase(players[i].getClientId());
-                players[i] = players[i + 1];
+bool GameState::removePlayer(int index) {
+    if (index < playerCount) {
+        for (int i = index; i < playerCount - 1; ++i) {
+            playerMap.erase(players[i].getClientId());
+            players[i] = players[i + 1];
+        }
+        --playerCount;
+        return true;
+    }
+    return false;
+}
+
+std::reference_wrapper<Player> GameState::getPlayer(int index) {
+    if (index < playerCount) {
+        return std::ref(players[index]);
+    }
+    throw std::out_of_range("Index out of range");
+}
+
+int GameState::getPlayerCount() const {
+    return playerCount;
+}
+
+int GameState::getPlayerIndexByClientId(int clientId) const {
+    auto it = playerMap.find(clientId);
+    if (it != playerMap.end()) {
+        for (int i = 0; i < playerCount; ++i) {
+            if (players[i].getClientId() == clientId) {
+                return i;
             }
-            --playerCount;
-            return true;
         }
-        return false;
     }
+    return 0;
+}
 
-    // Get a player by index
-    std::optional<std::reference_wrapper<Player>> getPlayer(int index) {
-        if (index < playerCount) {
-            return players[index];
-        }
-        return std::nullopt;
-    }
 
-    // Get the number of players
-    int getPlayerCount() const {
-        return playerCount;
-    }
-
-    const std::array<Player, maxPlayers>& getPlayers() const {
-        return players;
-    }
-
-private:
-    // Map the client IDs to the players for updating the game state
-    std::unordered_map<int, Player> playerMap;
-    std::array<Player, maxPlayers> players;
-    int playerCount;
-};
+const std::array<Player, GameState::maxPlayers>& GameState::getPlayers() const {
+    return players;
+}

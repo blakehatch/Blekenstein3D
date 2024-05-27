@@ -243,6 +243,8 @@ int main( int argc, char *argv[] ) {
         int result = select(socket_fd + 1, NULL, &writefds, NULL, &tv);
         if (result > 0 && FD_ISSET(socket_fd, &writefds)) {
             createAndSendUpdateMessage(socket_fd, fx, fy, playerAngle, isFiring);
+            // Read update messages from the server
+            readUpdateMessages(socket_fd);
             lastFx = fx;
             lastFy = fy;
             lastPlayerAngle = playerAngle;

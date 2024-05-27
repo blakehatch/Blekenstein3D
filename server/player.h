@@ -3,15 +3,14 @@
 
 class Player {
 public:
-    Player(float x, float y, int health, int clientId) 
-    : x(x), y(y), health(health), lastGunFireAngle(0.0f), clientId(clientId) {}
-    Player() {}
+    Player();
+    Player(float x, float y, int health, int clientId);
 
     // Getters
     float getX() const;
     float getY() const;
     int getHealth() const;
-    float getLastGunFireAngle() const;
+    float setLastGunFireAngle() const;
     int getClientId() const;
 
     // Setters

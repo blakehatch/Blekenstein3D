@@ -24,6 +24,7 @@ typedef struct {
 
 void sendUpdateMessage(int sockfd, UpdateMessage *msg);
 void createAndSendUpdateMessage(int sockfd, float x, float y, float angle, bool isFiring);
+void readUpdateMessages(int sockfd);
 int create_and_connect_socket();
 void close_socket(int sockfd);
 
