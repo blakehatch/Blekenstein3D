@@ -19,6 +19,8 @@ typedef struct {
 } UpdateMessage;
 
 void sendUpdateMessage(int sockfd, UpdateMessage *msg) {
+    const char *randomString = "This is a random string.";
+    write(sockfd, randomString, strlen(randomString));
     write(sockfd, msg, sizeof(UpdateMessage));
 }
 
@@ -54,7 +56,7 @@ void readUpdateMessages(int sockfd) {
     sscanf(buff, "Sending list of %d players back.", &playerCount);
 
     // Dynamically allocate the updateMessages array based on player count
-    UpdateMessage *updateMessages = (UpdateMessage *)malloc(playerCount * sizeof(UpdateMessage));
+    UpdateMessage *updateMessages = (UpdateMessage *) malloc(playerCount * sizeof(UpdateMessage));
     if (updateMessages == NULL) {
         printf("Memory allocation failed for updateMessages.\n");
         return;
@@ -100,8 +102,6 @@ int create_and_connect_socket() {
     } else {
         printf("connected to the server..\n");
     }
-
-    printf("RETURNING");
 
     return sockfd;
 }

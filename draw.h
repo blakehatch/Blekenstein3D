@@ -4,7 +4,7 @@
 void drawPixel(SDL_Renderer *renderer, int x, int y, SDL_Color color);
 
 // Function to draw a vertical ray (column of pixels) at x with a given color
-void drawColumn(SDL_Renderer *renderer, int x, int screenHeight, float depth, SDL_Color topBottomColor, SDL_Color middleColor);
+void drawColumn(SDL_Renderer *renderer, SDL_Color *pixels, int x, int screenHeight, float depth, SDL_Color topBottomColor, SDL_Texture *texture, int fixedTextureX);
 
 //void drawBillboard(SDL_Renderer *renderer, int screenWidth, int screenHeight, float spriteX, float spriteY, float playerXF, float playerYF, int playerX, int playerY, float playerAngle, SDL_Color color, SDL_Texture *spriteTexture, int map[20][20]);
 

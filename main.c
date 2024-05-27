@@ -134,6 +134,12 @@ int main( int argc, char *argv[] ) {
       return 1;
   }
 
+  SDL_Texture *wallTexture = createTextureFromBMP(renderer, "sprites/Tree_Wall_Texture.bmp");
+  if (!wallTexture) {
+      printf("Failed to load wall texture: %s\n", SDL_GetError());
+      return 1;
+  }
+
   /* The quit flag.  We run the game loop until this flag becomes
    * true.
    */
@@ -170,6 +176,60 @@ int main( int argc, char *argv[] ) {
   static float lastFx = 0.0f, lastFy = 0.0f, lastPlayerAngle = 0.0f;
   static bool lastIsFiring = false;
   static Uint32 lastUpdateTime = 0;
+    int textureWidth = 24 * 10;
+    int textureHeight = 62 * 10;
+
+  // SDL_Surface* wallSurface = SDL_CreateRGBSurfaceWithFormat(0, textureWidth, textureHeight, 32, SDL_PIXELFORMAT_RGBA32);
+  // if (!wallSurface) {
+  //     printf("Failed to create surface: %s\n", SDL_GetError());
+  //     return 1;
+  // }
+
+  SDL_SetRenderTarget(renderer, wallTexture);
+
+  Uint32 *pixels;
+
+  // Define the rectangle for the texture
+  SDL_Rect rect = {0, 0, textureWidth, textureHeight};
+
+  // Allocate memory for pixels
+  pixels = (Uint32*)malloc(rect.w * rect.h * sizeof(Uint32));
+
+  
+
+  if (!pixels) {
+      printf("Failed to allocate memory for pixels\n");
+      return 1;
+  }
+
+  // Render the texture with transformations (rotation, flipping, translation)
+  SDL_RenderCopyEx(renderer, wallTexture, NULL, &rect, 0, NULL, SDL_FLIP_NONE);
+
+  // Read the pixels from the renderer
+  if (SDL_RenderReadPixels(renderer, &rect, SDL_PIXELFORMAT_RGBA32, pixels, rect.w * sizeof(Uint32)) != 0) {
+      printf("Failed to read pixels from renderer: %s\n", SDL_GetError());
+      free(pixels); // Free the allocated memory
+      return 1;
+  }
+
+  SDL_Color *colorBuffer = (SDL_Color*)malloc(rect.w * rect.h * sizeof(SDL_Color));
+
+if (!colorBuffer) {
+    printf("Failed to allocate memory for color buffer\n");
+    free(pixels); // Free the allocated memory for pixels
+    return 1;
+}
+
+// Populate the color buffer with SDL_Colors
+for (int y = 0; y < rect.h; y++) {
+    for (int x = 0; x < rect.w; x++) {
+        Uint32 pixel = pixels[y * rect.w + x];
+        SDL_Color color;
+        SDL_GetRGBA(pixel, SDL_AllocFormat(SDL_PIXELFORMAT_RGBA32), &color.r, &color.g, &color.b, &color.a);
+        colorBuffer[y * rect.w + x] = color;
+    }
+}
+
 
 
   while ( !quit ) {
@@ -223,8 +283,9 @@ int main( int argc, char *argv[] ) {
             (Uint8)(128 * (1.0f - blendFactor) + topBotColor.g * blendFactor),
             (Uint8)(0 * (1.0f - blendFactor) + topBotColor.b * blendFactor),
             255
-        };
-        drawColumn(renderer, i, screenHeight, depthBuffer[i], topBotColor, middleColor);
+        };    
+
+        drawColumn(renderer, colorBuffer, i, screenHeight, depthBuffer[i], topBotColor, wallTexture, i);
     }
 
     getPlayerPosition(&x, &y, &fx, &fy, &playerAngle);
@@ -306,7 +367,7 @@ int main( int argc, char *argv[] ) {
                     (Uint8)(0 * (1.0f - blendFactor) + topBotColor.b * blendFactor),
                     255
                 };
-                drawColumn(renderer, j, screenHeight, depthBuffer[j], topBotColor, middleColor);
+                drawColumn(renderer, colorBuffer, j, screenHeight, depthBuffer[j], topBotColor, wallTexture, j);
             }
         }
     }
@@ -374,6 +435,7 @@ int main( int argc, char *argv[] ) {
    */
   SDL_DestroyTexture( texture );
   SDL_DestroyTexture( deerTexture );
+  SDL_DestroyTexture( wallTexture );
   SDL_DestroyRenderer( renderer );
   SDL_DestroyWindow( window );
   SDL_Quit();

@@ -10,8 +10,79 @@ void drawPixel(SDL_Renderer *renderer, int x, int y, SDL_Color color) {
     SDL_RenderDrawPoint(renderer, x, y);
 }
 
+SDL_Color getPixelColor(SDL_Renderer *renderer, SDL_Color *pixels, int textureWidth, int textureHeight, int x, int y) {
+    SDL_Color color;
+
+    // Ensure x and y are within bounds
+    if (x < 0 || x >= textureWidth || y < 0 || y >= textureHeight) {
+        // Return a default color (e.g., black) if out of bounds
+        color.r = 0;
+        color.g = 0;
+        color.b = 0;
+        color.a = 255;
+        return color;
+    }
+
+    color = pixels[(y * textureWidth) + x];
+
+    // Extract the color components
+    //printf("Extracted Pixel Color: %d, %d, %d, %d\n", color.r, color.g, color.b, color.a);
+
+    return color;
+}
+
 // Function to draw a vertical ray (column of pixels) at x with a given color
-void drawColumn(SDL_Renderer *renderer, int x, int screenHeight, float depth, SDL_Color topBottomColor, SDL_Color middleColor) {
+// void drawColumn(SDL_Renderer *renderer, SDL_Color *pixels, int x, int screenHeight, float depth, SDL_Color topBottomColor, SDL_Texture *wallTexture, int fixedTextureX) {
+//     int lineHeight = (int)(screenHeight / depth);
+
+//     // Calculate the start and end points of the line
+//     int drawStart = -lineHeight / 2 + screenHeight / 2;
+//     if (drawStart < 0) drawStart = 0;
+//     int drawEnd = lineHeight / 2 + screenHeight / 2;
+//     if (drawEnd >= screenHeight) drawEnd = screenHeight - 1;
+
+//     // Draw the top part (bright blue)
+//     SDL_SetRenderDrawColor(renderer, 0, 0, 255, topBottomColor.a); // Bright blue color
+//     SDL_RenderDrawLine(renderer, x, 0, x, drawStart);
+
+//     // Draw the bottom part (brownish green)
+//     SDL_SetRenderDrawColor(renderer, 139, 69, 19, topBottomColor.a); // Brownish green color
+//     SDL_RenderDrawLine(renderer, x, drawEnd, x, screenHeight);
+
+//     int textureWidth = 24 * 10;
+//     int textureHeight = 62 * 10;
+//     //SDL_QueryTexture(wallTexture, NULL, NULL, &textureWidth, &textureHeight);
+
+//     int prevY = drawStart;
+//     SDL_Color prevColor = getPixelColor(renderer, pixels, textureWidth, textureHeight, fixedTextureX % textureWidth, 0);
+
+//     for (int y = drawStart; y <= drawEnd; y++) {
+//         int textureY = ((y - drawStart) * textureHeight) / (drawEnd - drawStart + 1);
+//         SDL_Color dotColor = getPixelColor(renderer, pixels, textureWidth, textureHeight, fixedTextureX % textureWidth, textureY);
+
+//         float distanceFactor = depth / 10.0f; // Make the blend stronger by reducing the divisor
+//         if (distanceFactor > 1.0f) distanceFactor = 1.0f;
+//         SDL_Color blendedColor = {
+//             (Uint8)(dotColor.r * (1.0f - distanceFactor) + 128 * distanceFactor),
+//             (Uint8)(dotColor.g * (1.0f - distanceFactor) + 128 * distanceFactor),
+//             (Uint8)(dotColor.b * (1.0f - distanceFactor) + 128 * distanceFactor),
+//             dotColor.a
+//         };
+
+//         if (y > drawStart && (blendedColor.r != prevColor.r || blendedColor.g != prevColor.g || blendedColor.b != prevColor.b || blendedColor.a != prevColor.a)) {
+//             SDL_SetRenderDrawColor(renderer, prevColor.r, prevColor.g, prevColor.b, prevColor.a);
+//             SDL_RenderDrawLine(renderer, x, prevY, x, y - 1);
+//             prevY = y;
+//             prevColor = blendedColor;
+//         }
+//     }
+
+//     // Draw the last segment
+//     SDL_SetRenderDrawColor(renderer, prevColor.r, prevColor.g, prevColor.b, prevColor.a);
+//     SDL_RenderDrawLine(renderer, x, prevY, x, drawEnd);
+// }
+
+void drawColumn(SDL_Renderer *renderer, SDL_Color *pixels, int x, int screenHeight, float depth, SDL_Color topBottomColor, SDL_Texture *wallTexture, int fixedTextureX) {
     int lineHeight = (int)(screenHeight / depth);
 
     // Calculate the start and end points of the line
@@ -20,20 +91,24 @@ void drawColumn(SDL_Renderer *renderer, int x, int screenHeight, float depth, SD
     int drawEnd = lineHeight / 2 + screenHeight / 2;
     if (drawEnd >= screenHeight) drawEnd = screenHeight - 1;
 
-    // Draw the top part
-    SDL_SetRenderDrawColor(renderer, topBottomColor.r, topBottomColor.g, topBottomColor.b, topBottomColor.a);
+    // Draw the top part (bright blue)
+    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255); // Bright blue color
     SDL_RenderDrawLine(renderer, x, 0, x, drawStart);
 
-
-
-    // Draw the bottom part
-    SDL_SetRenderDrawColor(renderer, topBottomColor.r, topBottomColor.g, topBottomColor.b, topBottomColor.a);
+    // Draw the bottom part (brownish green)
+    SDL_SetRenderDrawColor(renderer, 139, 69, 19, 255); // Brownish green color
     SDL_RenderDrawLine(renderer, x, drawEnd, x, screenHeight);
 
-    // Draw the middle part
-    SDL_SetRenderDrawColor(renderer, middleColor.r, middleColor.g, middleColor.b, middleColor.a);
+    // Draw the middle part (darker green getting closer to grey with distance)
+    float distanceFactor = depth / 10.0f; // Adjust the divisor to control the rate of blending
+    if (distanceFactor > 1.0f) distanceFactor = 1.0f;
+    Uint8 green = (Uint8)(128 * (1.0f - distanceFactor) + 128 * distanceFactor);
+    Uint8 grey = (Uint8)(128 * distanceFactor);
+    SDL_SetRenderDrawColor(renderer, 0, green, grey, 255);
     SDL_RenderDrawLine(renderer, x, drawStart, x, drawEnd);
 }
+
+
 
 // Function to check if the line from (x0, y0) to (x1, y1) intersects a wall
 bool lineIntersectsWall(int x0, int y0, int x1, int y1, int map[20][20]) {
@@ -165,6 +240,9 @@ void drawMiniMap(SDL_Renderer *renderer, int map[20][20], float playerXF, float 
                 SDL_SetRenderDrawColor(renderer, rayColor.r, rayColor.g, rayColor.b, rayColor.a);
                 SDL_RenderDrawLine(renderer, playerScreenX, playerScreenY, contactX, contactY);
 
+                // Figure out how to track contact points so it always draws the same texture contacting
+                // the same wall
+
                 // INSERT_YOUR_CODE
                 // Calculate the distance from the player to the wall
                 float distance = sqrt((rayX - (playerXF + 0.5f)) * (rayX - (playerXF + 0.5f)) + (rayY - (playerYF + 0.5f)) * (rayY - (playerYF + 0.5f)));
@@ -174,6 +252,8 @@ void drawMiniMap(SDL_Renderer *renderer, int map[20][20], float playerXF, float 
 
                 // Ensure screenX is within bounds
                 depthBuffer[i] = distance;
+
+
 
                 // INSERT_YOUR_CODE
 

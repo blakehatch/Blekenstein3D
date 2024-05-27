@@ -9,6 +9,7 @@
 #include <type_traits>
 #include <unistd.h>
 #include <vector>
+#include <mutex>
 
 #include "game-state.h"
 #include "player.h"
@@ -31,9 +32,16 @@ typedef struct {
     bool isFiring;
 } UpdateMessage;
 
-void handle_client(int sock_client, GameState gameState, Player &player) {
-  UpdateMessage msg;
-  int bytes;
+
+
+std::mutex gameStateMutex;
+
+void handle_client(int sock_client, GameState &gameState) {
+    UpdateMessage msg;
+    int bytes;
+
+    Player player; // Initialize with default values
+
 
   while (true) {
     bytes = recv(sock_client, &msg, sizeof(UpdateMessage), 0);
@@ -160,11 +168,13 @@ int main(int argc, char **argv) {
     }
     std::cout << "[INFO] Socket is listening now.\n";
 
+    // Accept a call
+    sockaddr_in client_addr;
+    socklen_t client_addr_size = sizeof(client_addr); 
+    int sock_client; 
+
     while (true) {
-        // Accept a call
-        sockaddr_in client_addr;
-        socklen_t client_addr_size = sizeof(client_addr); 
-        int sock_client; 
+
         if ((sock_client = accept(sock_listener, (sockaddr*)&client_addr, &client_addr_size)) < 0) {
             std::cerr << "[ERROR] Connections cannot be accepted for a reason.\n";
             continue;
@@ -185,11 +195,8 @@ int main(int argc, char **argv) {
             std::cout << "[INFO] Client: (host: " << host << ", service: " << svc << ")\n";
         }
 
-        // Create a new player object for the client
-        Player player; // Initialize with default values
-
         // Handle client
-        handle_client(sock_client, std::ref(gameState), std::ref(player));
+        handle_client(sock_client, std::ref(gameState));
     }
 
     // Close main listener socket
