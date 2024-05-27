@@ -1,0 +1,18 @@
+# Visual Studio Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Object files
+*.o
+*.obj
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Binaries
+blek_3d
+game_server
