@@ -32,56 +32,6 @@ SDL_Color getPixelColor(SDL_Renderer *renderer, SDL_Color *pixels, int textureWi
 }
 
 // Function to draw a vertical ray (column of pixels) at x with a given color
-// void drawColumn(SDL_Renderer *renderer, SDL_Color *pixels, int x, int screenHeight, float depth, SDL_Color topBottomColor, SDL_Texture *wallTexture, int fixedTextureX) {
-//     int lineHeight = (int)(screenHeight / depth);
-
-//     // Calculate the start and end points of the line
-//     int drawStart = -lineHeight / 2 + screenHeight / 2;
-//     if (drawStart < 0) drawStart = 0;
-//     int drawEnd = lineHeight / 2 + screenHeight / 2;
-//     if (drawEnd >= screenHeight) drawEnd = screenHeight - 1;
-
-//     // Draw the top part (bright blue)
-//     SDL_SetRenderDrawColor(renderer, 0, 0, 255, topBottomColor.a); // Bright blue color
-//     SDL_RenderDrawLine(renderer, x, 0, x, drawStart);
-
-//     // Draw the bottom part (brownish green)
-//     SDL_SetRenderDrawColor(renderer, 139, 69, 19, topBottomColor.a); // Brownish green color
-//     SDL_RenderDrawLine(renderer, x, drawEnd, x, screenHeight);
-
-//     int textureWidth = 24 * 10;
-//     int textureHeight = 62 * 10;
-//     //SDL_QueryTexture(wallTexture, NULL, NULL, &textureWidth, &textureHeight);
-
-//     int prevY = drawStart;
-//     SDL_Color prevColor = getPixelColor(renderer, pixels, textureWidth, textureHeight, fixedTextureX % textureWidth, 0);
-
-//     for (int y = drawStart; y <= drawEnd; y++) {
-//         int textureY = ((y - drawStart) * textureHeight) / (drawEnd - drawStart + 1);
-//         SDL_Color dotColor = getPixelColor(renderer, pixels, textureWidth, textureHeight, fixedTextureX % textureWidth, textureY);
-
-//         float distanceFactor = depth / 10.0f; // Make the blend stronger by reducing the divisor
-//         if (distanceFactor > 1.0f) distanceFactor = 1.0f;
-//         SDL_Color blendedColor = {
-//             (Uint8)(dotColor.r * (1.0f - distanceFactor) + 128 * distanceFactor),
-//             (Uint8)(dotColor.g * (1.0f - distanceFactor) + 128 * distanceFactor),
-//             (Uint8)(dotColor.b * (1.0f - distanceFactor) + 128 * distanceFactor),
-//             dotColor.a
-//         };
-
-//         if (y > drawStart && (blendedColor.r != prevColor.r || blendedColor.g != prevColor.g || blendedColor.b != prevColor.b || blendedColor.a != prevColor.a)) {
-//             SDL_SetRenderDrawColor(renderer, prevColor.r, prevColor.g, prevColor.b, prevColor.a);
-//             SDL_RenderDrawLine(renderer, x, prevY, x, y - 1);
-//             prevY = y;
-//             prevColor = blendedColor;
-//         }
-//     }
-
-//     // Draw the last segment
-//     SDL_SetRenderDrawColor(renderer, prevColor.r, prevColor.g, prevColor.b, prevColor.a);
-//     SDL_RenderDrawLine(renderer, x, prevY, x, drawEnd);
-// }
-
 void drawColumn(SDL_Renderer *renderer, SDL_Color *pixels, int x, int screenHeight, float depth, SDL_Color topBottomColor, SDL_Texture *wallTexture, int fixedTextureX) {
     int lineHeight = (int)(screenHeight / depth);
 
@@ -92,21 +42,71 @@ void drawColumn(SDL_Renderer *renderer, SDL_Color *pixels, int x, int screenHeig
     if (drawEnd >= screenHeight) drawEnd = screenHeight - 1;
 
     // Draw the top part (bright blue)
-    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255); // Bright blue color
+    SDL_SetRenderDrawColor(renderer, 0, 0, 255, topBottomColor.a); // Bright blue color
     SDL_RenderDrawLine(renderer, x, 0, x, drawStart);
 
     // Draw the bottom part (brownish green)
-    SDL_SetRenderDrawColor(renderer, 139, 69, 19, 255); // Brownish green color
+    SDL_SetRenderDrawColor(renderer, 139, 69, 19, topBottomColor.a); // Brownish green color
     SDL_RenderDrawLine(renderer, x, drawEnd, x, screenHeight);
 
-    // Draw the middle part (darker green getting closer to grey with distance)
-    float distanceFactor = depth / 10.0f; // Adjust the divisor to control the rate of blending
-    if (distanceFactor > 1.0f) distanceFactor = 1.0f;
-    Uint8 green = (Uint8)(128 * (1.0f - distanceFactor) + 128 * distanceFactor);
-    Uint8 grey = (Uint8)(128 * distanceFactor);
-    SDL_SetRenderDrawColor(renderer, 0, green, grey, 255);
-    SDL_RenderDrawLine(renderer, x, drawStart, x, drawEnd);
+    int textureWidth = 24 * 10;
+    int textureHeight = 62 * 10;
+    //SDL_QueryTexture(wallTexture, NULL, NULL, &textureWidth, &textureHeight);
+
+    int prevY = drawStart;
+    SDL_Color prevColor = getPixelColor(renderer, pixels, textureWidth, textureHeight, fixedTextureX % textureWidth, 0);
+
+    for (int y = drawStart; y <= drawEnd; y++) {
+        int textureY = ((y - drawStart) * textureHeight) / (drawEnd - drawStart + 1);
+        SDL_Color dotColor = getPixelColor(renderer, pixels, textureWidth, textureHeight, fixedTextureX % textureWidth, textureY);
+
+        float distanceFactor = depth / 10.0f; // Make the blend stronger by reducing the divisor
+        if (distanceFactor > 1.0f) distanceFactor = 1.0f;
+        SDL_Color blendedColor = {
+            (Uint8)(dotColor.r * (1.0f - distanceFactor) + 128 * distanceFactor),
+            (Uint8)(dotColor.g * (1.0f - distanceFactor) + 128 * distanceFactor),
+            (Uint8)(dotColor.b * (1.0f - distanceFactor) + 128 * distanceFactor),
+            dotColor.a
+        };
+
+        if (y > drawStart && (blendedColor.r != prevColor.r || blendedColor.g != prevColor.g || blendedColor.b != prevColor.b || blendedColor.a != prevColor.a)) {
+            SDL_SetRenderDrawColor(renderer, prevColor.r, prevColor.g, prevColor.b, prevColor.a);
+            SDL_RenderDrawLine(renderer, x, prevY, x, y - 1);
+            prevY = y;
+            prevColor = blendedColor;
+        }
+    }
+
+    // Draw the last segment
+    SDL_SetRenderDrawColor(renderer, prevColor.r, prevColor.g, prevColor.b, prevColor.a);
+    SDL_RenderDrawLine(renderer, x, prevY, x, drawEnd);
 }
+
+// void drawColumn(SDL_Renderer *renderer, SDL_Color *pixels, int x, int screenHeight, float depth, SDL_Color topBottomColor, SDL_Texture *wallTexture, int fixedTextureX) {
+//     int lineHeight = (int)(screenHeight / depth);
+
+//     // Calculate the start and end points of the line
+//     int drawStart = -lineHeight / 2 + screenHeight / 2;
+//     if (drawStart < 0) drawStart = 0;
+//     int drawEnd = lineHeight / 2 + screenHeight / 2;
+//     if (drawEnd >= screenHeight) drawEnd = screenHeight - 1;
+
+//     // Draw the top part (bright blue)
+//     SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255); // Bright blue color
+//     SDL_RenderDrawLine(renderer, x, 0, x, drawStart);
+
+//     // Draw the bottom part (brownish green)
+//     SDL_SetRenderDrawColor(renderer, 139, 69, 19, 255); // Brownish green color
+//     SDL_RenderDrawLine(renderer, x, drawEnd, x, screenHeight);
+
+//     // Draw the middle part (darker green getting closer to grey with distance)
+//     float distanceFactor = depth / 10.0f; // Adjust the divisor to control the rate of blending
+//     if (distanceFactor > 1.0f) distanceFactor = 1.0f;
+//     Uint8 green = (Uint8)(128 * (1.0f - distanceFactor) + 128 * distanceFactor);
+//     Uint8 grey = (Uint8)(128 * distanceFactor);
+//     SDL_SetRenderDrawColor(renderer, 0, green, grey, 255);
+//     SDL_RenderDrawLine(renderer, x, drawStart, x, drawEnd);
+// }
 
 
 

@@ -1,6 +1,6 @@
 CC = clang
-CFLAGS = -Wall -Wextra -std=c11 -I/Library/Frameworks/SDL2.framework/Headers -F/Library/Frameworks -framework SDL2 -fsanitize=address -g
-LDFLAGS = -rpath /Library/Frameworks
+CFLAGS = -Wall -Wextra -std=c11 -I/Library/Frameworks/SDL2.framework/Headers -I/Library/Frameworks/SDL2_ttf.framework/Headers -F/Library/Frameworks -framework SDL2 -framework SDL2_ttf -fsanitize=address -g -ffast-math
+LDFLAGS = -rpath /Library/Frameworks -framework SDL2_ttf
 TARGET = blek_3d
 
 all: $(TARGET)

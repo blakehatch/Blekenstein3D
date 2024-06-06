@@ -32,8 +32,6 @@ typedef struct {
     bool isFiring;
 } UpdateMessage;
 
-
-
 std::mutex gameStateMutex;
 
 void handle_client(int sock_client, GameState &gameState) {

@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <fcntl.h>
 #include <sys/select.h>
+#include <limits.h>
 
 #include "draw.h"
 #include "game.h"
@@ -33,6 +34,55 @@ SDL_Texture* createTextureFromBMP(SDL_Renderer* renderer, const char* filePath) 
     return texture;
 }
 
+SDL_Texture* createNumberTexture(SDL_Renderer* renderer, int number) {
+    char filePath[64];
+    int digitWidth = 30; // Assuming each digit image has a width of 20 pixels
+    int digitHeight = 30; // Assuming each digit image has a height of 30 pixels
+
+    // Calculate the number of digits in the number
+    int numDigits = (number == 0) ? 1 : (int)log10(number) + 1;
+    SDL_Texture* finalTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, digitWidth * numDigits, digitHeight);
+    if (!finalTexture) {
+        printf("Failed to create final texture: %s\n", SDL_GetError());
+        return NULL;
+    }
+
+    SDL_SetRenderTarget(renderer, finalTexture);
+    SDL_SetTextureBlendMode(finalTexture, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+    SDL_RenderClear(renderer);
+
+    int tempNumber = number;
+    for (int i = numDigits - 1; i >= 0; i--) {
+        int digit = tempNumber % 10;
+        tempNumber /= 10;
+
+        snprintf(filePath, sizeof(filePath), "sprites/text/%d.bmp", digit);
+        SDL_Surface* surface = SDL_LoadBMP(filePath);
+        if (!surface) {
+            printf("Failed to load BMP file for digit %d: %s\n", digit, SDL_GetError());
+            SDL_DestroyTexture(finalTexture);
+            return NULL;
+        }
+
+        SDL_Texture* digitTexture = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_FreeSurface(surface);
+        if (!digitTexture) {
+            printf("Failed to create texture for digit %d: %s\n", digit, SDL_GetError());
+            SDL_DestroyTexture(finalTexture);
+            return NULL;
+        }
+
+        SDL_Rect srcRect = {0, 0, digitWidth, digitHeight};
+        SDL_Rect destRect = {i * digitWidth, 0, digitWidth, digitHeight};
+        SDL_RenderCopy(renderer, digitTexture, &srcRect, &destRect);
+        SDL_DestroyTexture(digitTexture);
+    }
+
+    SDL_SetRenderTarget(renderer, NULL); // Reset the render target
+    return finalTexture;
+}
+
 int setNonBlocking(int socket_fd) {
     int flags = fcntl(socket_fd, F_GETFL, 0);
     if (flags == -1) {
@@ -40,6 +90,7 @@ int setNonBlocking(int socket_fd) {
     }
     return fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK);
 }
+
 
 /* The main() function displays a BMP file on the screen and waits for
  * the user to press the X to close the window.
@@ -111,9 +162,10 @@ int main( int argc, char *argv[] ) {
    *
    * We explicitly ask for hardware redering with
    * SDL_RENDERER_ACCELERATED.
+   * Switched to SOFTWARE as a test of optimization by making it CPU bound
    */
   SDL_Renderer *renderer = 
-    SDL_CreateRenderer( window, -1, SDL_RENDERER_ACCELERATED );
+    SDL_CreateRenderer( window, -1, SDL_RENDERER_SOFTWARE );
 
   /* We create the texture we want to disaply from the surface we
    * loaded earlier.
@@ -231,9 +283,15 @@ for (int y = 0; y < rect.h; y++) {
 }
 
 
+  Uint32 frameCount = 0;
+  Uint32 lastTime = SDL_GetTicks(), currentTime;
+  float framesPerSecond = 0;
+
 
   while ( !quit ) {
     Uint32 start = SDL_GetTicks();
+
+
 
     const Uint8 *state = SDL_GetKeyboardState(NULL);
     while ( SDL_PollEvent( &e ) ) {
@@ -403,6 +461,25 @@ for (int y = 0; y < rect.h; y++) {
      * entire screen.
      */
     SDL_RenderCopy( renderer, texture, NULL, NULL );
+
+    Uint32 early_end = SDL_GetTicks();
+
+    /* Calculate the time spent in our game loop by subtracting start from end.
+     * This gives us the frame duration in milliseconds.
+     */
+    Uint32 frameDurationEarly = early_end - start;
+
+    int fps = frameDurationEarly > 0 ? 1000 / frameDurationEarly : INT_MAX;
+
+    SDL_Texture* fpsTexture = createNumberTexture(renderer, fps);
+    if (fpsTexture) {
+        int fpsTextWidth, fpsTextHeight;
+        SDL_QueryTexture(fpsTexture, NULL, NULL, &fpsTextWidth, &fpsTextHeight);
+        SDL_Rect fpsTextRect = {10, 10, fpsTextWidth, fpsTextHeight}; // Position changed to top left
+        SDL_RenderCopy(renderer, fpsTexture, NULL, &fpsTextRect);
+        SDL_DestroyTexture(fpsTexture);
+    }
+
     /* And finally tell the renderer to display on screen what we've
      * drawn so far.
      */
@@ -413,21 +490,28 @@ for (int y = 0; y < rect.h; y++) {
      */
     Uint32 end = SDL_GetTicks();
 
-    /* We subtract end - start to get the time spent in our game loop.
-     * This is very basic clock usage.  We then calculate how long we
-     * should wait in milliseconds given the current framerate f, and
-     * subtract again from that our previous results, to get the time
-     * we should spend waiting.
-     * 
-     * If end - start is larger than 1000 / f, this will turn
-     * negative; in which case we don't want to wait at all.
+    /* Calculate the time spent in our game loop by subtracting start from end.
+     * This gives us the frame duration in milliseconds.
      */
-    int wait_for = 1000 / f - ( end - start );
+    Uint32 frameDuration = end - start;
+
+    /* Calculate the current framerate in frames per second (fps).
+     * If frameDuration is zero, we avoid division by zero by setting fps to the maximum possible value.
+     */
+
+
+    /* We calculate how long we should wait in milliseconds given the target framerate f,
+     * and subtract the frame duration from that to get the time we should spend waiting.
+     * 
+     * If the frame duration is larger than 1000 / f, this will turn negative;
+     * in which case we don't want to wait at all.
+     */
+    int wait_for = 1000 / f - frameDuration;
 
     /* If we calculated positive milliseconds to wait_for, we wait.
      */
-    if ( wait_for > 0 ) {
-      SDL_Delay( wait_for );
+    if (wait_for > 0) {
+      SDL_Delay(wait_for);
     }
   }
 
